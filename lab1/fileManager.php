@@ -1,8 +1,5 @@
 <?php
 
-// ======================
-// 1. Абстрактне сховище
-// ======================
 abstract class Storage {
     abstract public function upload($sourcePath, $destFileName);
     abstract public function download($fileName);
@@ -10,14 +7,11 @@ abstract class Storage {
     abstract public function listFiles();
 }
 
-// ======================
-// 2. Локальне сховище
-// ======================
 class LocalStorage extends Storage {
     private $baseDir;
 
     public function __construct($baseDir = "user_files") {
-        $this->baseDir = $baseDir;
+        $this->baseDir = $baseDir ?? (__DIR__ . DIRECTORY_SEPARATOR . "user_files");
 
         if (!file_exists($this->baseDir)) {
             mkdir($this->baseDir, 0777, true);
@@ -25,20 +19,23 @@ class LocalStorage extends Storage {
     }
 
     public function upload($sourcePath, $destFileName) {
+        if (!file_exists($sourcePath)) {
+            $sourcePath = __DIR__ . DIRECTORY_SEPARATOR . $sourcePath;
+        }
         $destination = $this->baseDir . DIRECTORY_SEPARATOR . $destFileName;
         if (copy($sourcePath, $destination)) {
-            echo "Файл '{$destFileName}' успішно завантажено у локальне сховище.\n";
+            echo "Файл '{$destFileName}' успішно завантажено у локальне сховище.<br><br>";
         } else {
-            echo "Помилка завантаження файлу.\n";
+            echo "Помилка завантаження файлу.<br>";
         }
     }
 
     public function download($fileName) {
         $path = $this->baseDir . DIRECTORY_SEPARATOR . $fileName;
         if (file_exists($path)) {
-            echo "Завантаження файлу: '{$fileName}' — успішно (шлях: {$path})\n";
+            echo "Завантаження файлу: '{$fileName}' — успішно (шлях: {$path})<br><br>";
         } else {
-            echo "Файл '{$fileName}' не знайдено у локальному сховищі.\n";
+            echo "Файл '{$fileName}' не знайдено у локальному сховищі.<br>";
         }
     }
 
@@ -46,53 +43,48 @@ class LocalStorage extends Storage {
         $path = $this->baseDir . DIRECTORY_SEPARATOR . $fileName;
         if (file_exists($path)) {
             unlink($path);
-            echo "Файл '{$fileName}' видалено з локального сховища.\n";
+            echo "Файл '{$fileName}' видалено з локального сховища.<br><br>";
         } else {
-            echo "Файл '{$fileName}' не знайдено для видалення.\n";
+            echo "Файл '{$fileName}' не знайдено для видалення.<br>";
         }
     }
 
     public function listFiles() {
         $files = scandir($this->baseDir);
         $files = array_diff($files, ['.', '..']);
-        echo "Файли у сховищі '{$this->baseDir}':\n";
+        echo "Файли у сховищі '{$this->baseDir}':<br>";
         foreach ($files as $file) {
-            echo "  - {$file}\n";
+            echo "  - {$file}<br>";
         }
     }
 }
 
-// ======================
-// 3. Менеджер файлів (Singleton)
-// ======================
 class FileManager {
     private static $instance = null;
     private $storage = null;
 
-    // Приватний конструктор — забороняє створення через new
+    // приватний конструктор забороняє створення через new
     private function __construct() {}
 
-    // Метод для отримання єдиного екземпляра
+    // для отримання єдиного екземпляра
     public static function getInstance() {
         if (self::$instance === null) {
             self::$instance = new FileManager();
-            echo "Створено новий екземпляр FileManager.\n";
+            echo "Створено новий екземпляр FileManager.<br>";
         } else {
-            echo "Використовується існуючий екземпляр FileManager.\n";
+            echo "Використовується існуючий екземпляр FileManager.<br>";
         }
         return self::$instance;
     }
 
-    // Встановлення сховища для користувача
     public function setStorage(Storage $storage) {
         $this->storage = $storage;
-        echo "Встановлено нове сховище для користувача (" . get_class($storage) . ").\n";
+        echo "Встановлено нове сховище для користувача (" . get_class($storage) . ").<br>";
     }
 
-    // Операції з файлами
     public function uploadFile($sourcePath, $destFileName) {
         if ($this->storage === null) {
-            echo "Помилка: сховище не встановлено!\n";
+            echo "Помилка: сховище не встановлено!<br>";
             return;
         }
         $this->storage->upload($sourcePath, $destFileName);
@@ -100,7 +92,7 @@ class FileManager {
 
     public function downloadFile($fileName) {
         if ($this->storage === null) {
-            echo "Помилка: сховище не встановлено!\n";
+            echo "Помилка: сховище не встановлено!<br>";
             return;
         }
         $this->storage->download($fileName);
@@ -108,7 +100,7 @@ class FileManager {
 
     public function deleteFile($fileName) {
         if ($this->storage === null) {
-            echo "Помилка: сховище не встановлено!\n";
+            echo "Помилка: сховище не встановлено!<br>";
             return;
         }
         $this->storage->delete($fileName);
@@ -116,38 +108,31 @@ class FileManager {
 
     public function listFiles() {
         if ($this->storage === null) {
-            echo "Помилка: сховище не встановлено!\n";
+            echo "Помилка: сховище не встановлено!<br>";
             return;
         }
         $this->storage->listFiles();
     }
 }
 
-// ======================
-// 4. Демонстрація роботи
-// ======================
-
-// Для спрощення створимо тестовий файл
-$testFile = "example.txt";
+// Приклад роботи
+$testFile = __DIR__ . DIRECTORY_SEPARATOR . "example.txt";
 file_put_contents($testFile, "Тестовий вміст файлу");
 
-// Отримуємо єдиний екземпляр менеджера файлів
 $fileManager1 = FileManager::getInstance();
 
-// Встановлюємо сховище (локальний диск)
 $localStorage = new LocalStorage();
 $fileManager1->setStorage($localStorage);
 
-// Виконуємо операції
 $fileManager1->uploadFile($testFile, "copy1.txt");
 $fileManager1->listFiles();
 $fileManager1->downloadFile("copy1.txt");
-$fileManager1->deleteFile("copy1.txt");
+//$fileManager1->deleteFile("copy1.txt");
 
-// Демонструємо, що другий "екземпляр" — той самий об’єкт
+// другий екземпляр це той самий об’єкт
 $fileManager2 = FileManager::getInstance();
 if ($fileManager1 === $fileManager2) {
-    echo "Перевірка: fileManager1 та fileManager2 — це один і той самий об’єкт (Singleton).\n";
+    echo "Перевірка: fileManager1 та fileManager2 — це один і той самий об’єкт.<br>";
 }
 
 ?>
